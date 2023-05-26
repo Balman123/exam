@@ -1,0 +1,163 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <chrono>
+
+using namespace std;
+using namespace chrono;
+
+struct Todo {
+    string title;
+    int priority;
+    string description;
+    system_clock::time_point due_date;
+};
+
+class TodoList {
+    vector<Todo> todos;
+
+public:
+    void add_todo(const Todo& todo) {
+        todos.push_back(todo);
+    }
+
+    void delete_todo(const string& title) {
+        todos.erase(remove_if(todos.begin(), todos.end(),
+                              [title](const Todo& todo) {
+                                  return todo.title == title;
+                              }),
+                    todos.end());
+    }
+
+    void edit_todo(const string& title, const string& new_title, int new_priority, const string& new_description, const system_clock::time_point& new_due_date) {
+        auto it = find_if(todos.begin(), todos.end(),
+                          [title](const Todo& todo) {
+                              return todo.title == title;
+                          });
+        if (it != todos.end()) {
+            it->title = new_title;
+            it->priority = new_priority;
+            it->description = new_description;
+            it->due_date = new_due_date;
+        }
+    }
+
+    vector<Todo> search_by_title(const string& title) const {
+        vector<Todo> result;
+        copy_if(todos.begin(), todos.end(), back_inserter(result),
+                [title](const Todo& todo) {
+                    return todo.title == title;
+                });
+        return result;
+    }
+
+    vector<Todo> search_by_priority(int priority) const {
+        vector<Todo> result;
+        copy_if(todos.begin(), todos.end(), back_inserter(result),
+                [priority](const Todo& todo) {
+                    return todo.priority == priority;
+                });
+        return result;
+    }
+
+    vector<Todo> search_by_description(const string& description) const {
+        vector<Todo> result;
+        copy_if(todos.begin(), todos.end(), back_inserter(result),
+                [description](const Todo& todo) {
+                    return todo.description == description;
+                });
+        return result;
+    }
+
+    vector<Todo> search_by_due_date(const system_clock::time_point& due_date) const {
+        vector<Todo> result;
+        copy_if(todos.begin(), todos.end(), back_inserter(result),
+                [due_date](const Todo& todo) {
+                    return todo.due_date == due_date;
+                });
+        return result;
+    }
+
+    void display_sorted_by_priority() const {
+        vector<Todo> sorted_todos = todos;
+        sort(sorted_todos.begin(), sorted_todos.end(),
+             [](const Todo& a, const Todo& b) {
+                 return a.priority < b.priority;
+             });
+        for (const auto& todo : sorted_todos) {
+            cout << "Title: " << todo.title << ", Priority: " << todo.priority << endl;
+        }
+    }
+
+    void display_sorted_by_due_date() const {
+        vector<Todo> sorted_todos = todos;
+        sort(sorted_todos.begin(), sorted_todos.end(),
+             [](const Todo& a, const Todo& b) {
+                 return a.due_date < b.due_date;
+             });
+        for (const auto& todo : sorted_todos) {
+            cout << "Title: " << todo.title << ", Due Date: " << system_clock::to_time_t(todo.due_date) << endl;
+        }
+    }
+
+    void display_daily_schedule(const system_clock::time_point& date) const {
+        vector<Todo> schedule;
+        copy_if(todos.begin(), todos.end(), back_inserter(schedule),
+                [&date](const Todo& todo) {
+                    return floor<days>(todo.due_date) == floor<days>(date);
+                });
+        for (const auto& todo : schedule) {
+            cout << "Title: " << todo.title << ", Due Date: " << system_clock::to_time_t(todo.due_date) << endl;
+        }
+    }
+
+    void display_weekly_schedule(const system_clock::time_point& start_date) const {
+        system_clock::time_point end_date = start_date + hours(7 * 24);
+        vector<Todo> schedule;
+        copy_if(todos.begin(), todos.end(), back_inserter(schedule),
+                [&start_date, &end_date](const Todo& todo) {
+                    return todo.due_date >= start_date && todo.due_date <= end_date;
+                });
+        for (const auto& todo : schedule) {
+            cout << "Title: " << todo.title << ", Due Date: " << system_clock::to_time_t(todo.due_date) << endl;
+        }
+    }
+
+    void display_monthly_schedule(int month, int year) const {
+        vector<Todo> schedule;
+        copy_if(todos.begin(), todos.end(), back_inserter(schedule),
+                [&month, &year](const Todo& todo) {
+                    tm* due_date_tm = localtime(&system_clock::to_time_t(todo.due_date));
+                    return due_date_tm->tm_mon + 1 == month && due_date_tm->tm_year + 1900 == year;
+                });
+        for (const auto& todo : schedule) {
+            cout << "Title: " << todo.title << ", Due Date: " << system_clock::to_time_t(todo.due_date) << endl;
+        }
+    }
+};
+
+int main() {
+    TodoList todo_list;
+
+    todo_list.add_todo({"Task 1", 2, "Description 1", system_clock::from_time_t(mktime(localtime(&((time_t[]){0, 0, 0, 28, 4, 123})[0])))});
+    todo_list.add_todo({"Task 2", 1, "Description 2", system_clock::from_time_t(mktime(localtime(&((time_t[]){0, 0, 0, 26, 4, 123})[0])))});
+    todo_list.add_todo({"Task 3", 3, "Description 3", system_clock::from_time_t(mktime(localtime(&((time_t[]){0, 0, 0, 27, 4, 123})[0])))});
+
+    todo_list.display_sorted_by_priority();
+    todo_list.display_sorted_by_due_date();
+
+    system_clock::time_point date = system_clock::from_time_t(mktime(localtime(&((time_t[]){0, 0, 0, 27, 4, 123})[0])));
+
+    todo_list.display_daily_schedule(date);
+
+    system_clock::time_point start_date = system_clock::from_time_t(mktime(localtime(&((time_t[]){0, 0, 0, 26, 4, 123})[0])));
+
+    todo_list.display_weekly_schedule(start_date);
+
+    int month = 4;
+    int year = 123;
+
+    todo_list.display_monthly_schedule(month, year);
+
+    return 0;
+}
